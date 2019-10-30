@@ -120,6 +120,15 @@ config COMP_KPB
 	help
 	  Select for KPB component
 
+config COMP_GOOGLE_HOTWORD_DETECT
+	bool "Google hotword detector component"
+	default n
+	help
+	  Select for Google hotword detector component. It uses the Google
+	  hotword library to do keyword detection. A language model needs to
+	  be set using the byte control 'Hotword Model' before running the
+	  detector.
+
 config COMP_SEL
 	bool "Channel selector component"
 	default y
