@@ -151,6 +151,9 @@ set(TPLGS
 
 add_custom_target(topologies ALL)
 
+set(debug_dir "${CMAKE_CURRENT_BINARY_DIR}/debug")
+file(MAKE_DIRECTORY ${debug_dir})
+
 foreach(tplg ${TPLGS})
 	list(GET tplg 0 input)
 	list(GET tplg 1 output)
@@ -180,6 +183,44 @@ foreach(tplg ${TPLGS})
 		VERBATIM
 		USES_TERMINAL
 	)
+
+	add_custom_command(
+		OUTPUT ${debug_dir}/${output}.dot
+		COMMAND m4
+			${DEFINES}
+			--define=GRAPH
+			--define=INFO
+			-I ${CMAKE_CURRENT_SOURCE_DIR}/m4
+			-I ${CMAKE_CURRENT_SOURCE_DIR}/common
+			-I ${CMAKE_CURRENT_SOURCE_DIR}/platform/common
+			-I ${CMAKE_CURRENT_SOURCE_DIR}
+			-I ${CMAKE_CURRENT_BINARY_DIR}
+			${CMAKE_CURRENT_SOURCE_DIR}/common/abi.m4
+			${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
+			> /dev/null
+			2> ${debug_dir}/${output}.dot
+		DEPENDS abi
+		VERBATIM
+		USES_TERMINAL
+	)
+	add_custom_command(
+		OUTPUT ${debug_dir}/${output}.png
+		COMMAND dot
+			-Tpng
+			${debug_dir}/${output}.dot
+			-o ${debug_dir}/${output}.png
+			> /dev/null
+		DEPENDS ${debug_dir}/${output}.dot
+		VERBATIM
+		USES_TERMINAL
+	)
+	add_custom_target(topology_debug_${output} DEPENDS ${debug_dir}/${output}.png)
+
+	file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4 src)
+	string(FIND "${src}" "DEBUG_START" idx)
+	if (NOT(${idx} EQUAL -1) AND (${output} STREQUAL "sof-cml-da7219-max98357a"))
+		add_dependencies(topologies topology_debug_${output})
+	endif()
 
 # This use of VERBOSE relies on original CMake behavior.
 # From the add_custom_command() manual:

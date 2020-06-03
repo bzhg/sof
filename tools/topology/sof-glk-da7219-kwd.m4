@@ -19,6 +19,8 @@ include(`sof/tokens.m4')
 # include platform specific dsp configuration and machine specific settings
 include(`platform/intel/'PLATFORM`-da7219.m4')
 
+DEBUG_START
+
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 
 #
@@ -201,3 +203,5 @@ VIRTUAL_WIDGET(iDisp1_out, out_drv, 11)
 VIRTUAL_WIDGET(codec0_out, output, 12)
 VIRTUAL_WIDGET(codec1_out, output, 13)
 VIRTUAL_WIDGET(codec0_in, input, 14)
+
+DEBUG_END
