@@ -217,8 +217,6 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 	if (ticks_delta > ticks_tout)
 		ticks_delta = ticks_tout;
 
-	tr_err(&ll_tr, "time!: next %u", (uint32_t)ticks_delta);
-
 	k_delayed_work_submit_to_queue(&timer_domain[core].ll_workq[core],
 					&zdata[core].work,
 					K_CYC(ticks_delta - 192 * 3));
