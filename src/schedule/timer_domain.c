@@ -23,7 +23,19 @@
 #include <kernel.h>
 #include <sys_clock.h>
 
+/*
+ * Currently the Zephyr clock rate is part it's Kconfig known at build time.
+ * SOF on Intel CAVS platforms currently only aligns with Zephyr when both
+ * use the CAVS 19.2 MHz SSP clock. TODO - needs runtime alignment.
+ */
+#if defined(CONFIG_CAVS) && !defined(CONFIG_INTEL_SSP)
+#error "Zephyr uses 19.2MHz clock derived from SSP which must be enabled."
+#endif
+
 #define ZEPHYR_LL_WORKQ_SIZE	8192
+
+#define CYC_PER_TICK	(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC	\
+			/ CONFIG_SYS_CLOCK_TICKS_PER_SEC)
 
 K_THREAD_STACK_DEFINE(ll_workq_stack0, ZEPHYR_LL_WORKQ_SIZE);
 #if CONFIG_CORE_COUNT > 1
@@ -64,8 +76,14 @@ static inline void timer_report_delay(int id, uint64_t delay)
 	uint32_t ll_delay_us = (delay * 1000) /
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
-	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %u ticks",
-	       id, ll_delay_us, (uint32_t)delay);
+#ifdef __ZEPHYR__
+	/* Zephyr schedules on nearest kernel tick not HW cycle */
+	if (ll_delay_us <= CYC_PER_TICK)
+		return;
+#endif
+
+	tr_err(&ll_tr, "timer_report_delay(): timer %d delayed by %d uS %llu ticks",
+	       id, ll_delay_us, delay);
 
 	/* Fix compile error when traces are disabled */
 	(void)ll_delay_us;
@@ -130,7 +148,7 @@ static int timer_domain_register(struct ll_schedule_domain *domain,
 	zdata[core].handler = handler;
 	zdata[core].arg = arg;
 	k_work_q_start(&timer_domain->ll_workq[core], stack,
-			ZEPHYR_LL_WORKQ_SIZE, -1);
+			ZEPHYR_LL_WORKQ_SIZE, -CONFIG_NUM_COOP_PRIORITIES);
 	k_thread_name_set(&timer_domain->ll_workq[core].thread, qname);
 	timer_domain->ll_workq_registered[core] = 1;
 
