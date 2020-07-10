@@ -377,12 +377,11 @@ int task_main_start(struct sof *sof)
 	/* init self-registered modules */
 	sys_module_init();
 
+	/* host is mandatory */
+	sys_comp_host_init();
+
 	if (IS_ENABLED(CONFIG_COMP_VOLUME)) {
 		sys_comp_volume_init();
-	}
-
-	if (IS_ENABLED(CONFIG_COMP_HOST)) {
-		sys_comp_host_init();
 	}
 
 	if (IS_ENABLED(CONFIG_COMP_MIXER)) {
@@ -417,11 +416,11 @@ int task_main_start(struct sof *sof)
 		sys_comp_eq_iir_init();
 	}
 
-	if (IS_ENABLED(CONFIG_COMP_MUX)) {
+	if (IS_ENABLED(CONFIG_COMP_KPB)) {
 		sys_comp_keyword_init();
 	}
 
-	if (IS_ENABLED(CONFIG_COMP_MUX)) {
+	if (IS_ENABLED(CONFIG_COMP_ASRC)) {
 		sys_comp_asrc_init();
 	}
 

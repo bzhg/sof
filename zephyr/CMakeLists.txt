@@ -368,6 +368,7 @@ zephyr_library_sources(
 	${SOF_AUDIO_PATH}/buffer.c
 	${SOF_AUDIO_PATH}/component.c
 	${SOF_AUDIO_PATH}/pipeline.c
+	${SOF_AUDIO_PATH}/host.c
 
 	# SOF core infrastructure - runs on top of Zephyr
 	${SOF_SRC_PATH}/init/init.c
@@ -432,10 +433,6 @@ zephyr_library_sources_ifdef(CONFIG_COMP_MIXER
 
 zephyr_library_sources_ifdef(CONFIG_COMP_TONE
 	${SOF_AUDIO_PATH}/tone.c
-)
-
-zephyr_library_sources_ifdef(CONFIG_COMP_HOST
-	${SOF_AUDIO_PATH}/host.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COMP_DAI
