@@ -453,4 +453,21 @@ UT_STATIC void sys_comp_ghd_init(void)
 					  sizeof(ghd_driver_info)));
 }
 
+/* Define the __vec_mem* functions used by the hotword library.
+ * This is only needed if the gcc toolchain is used.
+ * The xcc toolchain provides the proper implementation.
+ */
+
+void *__vec_memcpy(void *a, const void *b, size_t c);
+void *__vec_memcpy(void *a, const void *b, size_t c)
+{
+	return memcpy(a, b, c);
+}
+
+void *__vec_memset(void *a, int b, size_t c);
+void *__vec_memset(void *a, int b, size_t c)
+{
+	return memset(a, b, c);
+}
+
 DECLARE_MODULE(sys_comp_ghd_init);
