@@ -46,6 +46,10 @@ struct ctl_data {
 	bool print_abi_header;
 	int print_abi_size;
 
+	/* generate TLV and ABI headers */
+	bool generate_all_headers;
+	int generate_all_headers_payload_size;
+
 	/* name of sound card device */
 	char *dev;
 	char *cname;
@@ -519,7 +523,7 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:g:br")) != -1) {
+	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:g:a:br")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -552,6 +556,10 @@ int main(int argc, char *argv[])
 			ctl_data->print_abi_header = true;
 			ctl_data->print_abi_size = atoi(optarg);
 			break;
+		case 'a':
+			ctl_data->generate_all_headers = true;
+			ctl_data->generate_all_headers_payload_size = atoi(optarg);
+			break;
 		case 'h':
 		/* pass through */
 		default:
@@ -568,6 +576,28 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "error: %s\n", strerror(errno));
 			goto struct_free;
 		}
+	}
+
+	if (ctl_data->generate_all_headers) {
+		FILE *fh;
+
+		ctl_data->ctrl_size = sizeof(struct sof_abi_hdr);
+		buffer_alloc(ctl_data);
+		header_init(ctl_data);
+		hdr = (struct sof_abi_hdr *)
+			&ctl_data->buffer[BUFFER_ABI_OFFSET];
+		hdr->size = ctl_data->generate_all_headers_payload_size;
+		ctl_data->buffer[BUFFER_SIZE_OFFSET] = hdr->size + sizeof(struct sof_abi_hdr);
+
+		fh = fdopen(ctl_data->out_fd, "wb");
+		if (!fh) {
+			fprintf(stderr, "error: %s\n", strerror(errno));
+			return -ENOENT;
+		}
+
+		fwrite(ctl_data->buffer, 1, ctl_data->buffer_size, fh);
+		buffer_free(ctl_data);
+		goto out_fd_close;
 	}
 
 	/* Just print the ABI header if requested */
