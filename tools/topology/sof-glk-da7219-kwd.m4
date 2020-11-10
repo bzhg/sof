@@ -62,14 +62,6 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
-
-PIPELINE_PCM_ADD(DMIC_PIPE_CAPTURE,
-	4, DMIC_PCM_NUM, 4, DMIC01_FMT,
-	1000, 0, 0,
-	48000, 48000, 48000)
-
 # Low Latency playback pipeline 5 on PCM 5 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
@@ -121,13 +113,6 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_3, 2, s16le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# capture DAI is DMIC0 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-capture.m4,
-	4, DMIC, 0, dmic01,
-	PIPELINE_SINK_4, 2, DMIC01_FMT,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -150,54 +135,25 @@ DAI_ADD(sof/pipe-dai-playback.m4,
         1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 #
-# KWD configuration
+# DMIC and KWD configuration
 #
-
-# Passthrough capture pipeline 8 on PCM 8 using max 2 channels.
-# Schedule 20000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-kfbm-capture.m4,
-	8, 8, 2, DMIC1_FMT,
-	KWD_PIPE_SCH_DEADLINE_US, 0, 0, DMIC, 1, DMIC01_FMT, 3,
-	16000, 16000, 16000)
-
-# capture DAI is DMIC 1 using 3 periods
-# Buffers use s16le format, with 320 frame per 20000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-capture.m4,
-	8, DMIC, 1, dmic16k,
-	PIPELINE_SINK_8, 3, DMIC01_FMT,
-	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
-	SCHEDULE_TIME_DOMAIN_TIMER)
-
+define(DMIC_PIPELINE_48k_ID, 4)
+define(DMIC_PCM_48k_ID, DMIC_PCM_NUM)
+define(CHANNELS, 4)
+define(KFBM_TYPE, kfbm)
+define(DMIC_PIPELINE_16k_ID, 8)
+define(DMIC_PCM_16k_ID, 8)
+define(DMIC_PIPELINE_KWD_ID, 9)
+define(DMIC_DAI_LINK_48k_ID, 2)
+define(DMIC_DAI_LINK_16k_ID, 6)
+define(DETECTOR_TYPE, google-hotword-detect)
+include(`platform/intel/intel-generic-dmic-kwd.m4')
 
 PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
-PCM_CAPTURE_ADD(DMIC, DMIC_PCM_NUM, PIPELINE_PCM_4)
 PCM_PLAYBACK_ADD(HDMI1, 5, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI2, 6, PIPELINE_PCM_6)
 PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_7)
-
-# keyword detector pipe
-dnl PIPELINE_ADD(pipeline,
-dnl     pipe id, max channels, format,
-dnl     period, priority, core,
-dnl     sched_comp, time_domain,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
-PIPELINE_ADD(sof/pipe-detect.m4,
-	     9, 2, DMIC1_FMT,
-	     KWD_PIPE_SCH_DEADLINE_US, 1, 0,
-	     PIPELINE_SCHED_COMP_8, SCHEDULE_TIME_DOMAIN_TIMER,
-	     16000, 16000, 16000)
-
-# Connect pipelines together
-SectionGraph."pipe-sof-PLATFORM-keyword-detect" {
-        index "0"
-
-        lines [
-		# keyword detect
-                dapm(PIPELINE_SINK_9, PIPELINE_SOURCE_8)
-		dapm(PIPELINE_PCM_8, PIPELINE_DETECT_9)
-        ]
-}
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -217,12 +173,6 @@ DAI_CONFIG(SSP, SSP_INDEX, 1, SSP_NAME,
                 SSP_TDM(2, SSP_BITS_WIDTH, 3, 3),
                 SSP_CONFIG_DATA(SSP, SSP_INDEX, SSP_VALID_BITS, MCLK_ID)))
 
-# dmic01 (ID: 2)
-DAI_CONFIG(DMIC, 0, 2, dmic01,
-	DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(DMIC01_FMT), 400, DMIC, 0,
-		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
-
 # 3 HDMI/DP outputs (ID: 3,4,5)
 DAI_CONFIG(HDA, HDMI0_INDEX, 3, iDisp1,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, HDMI0_INDEX, 48000, 2)))
@@ -230,12 +180,6 @@ DAI_CONFIG(HDA, HDMI1_INDEX, 4, iDisp2,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, HDMI1_INDEX, 48000, 2)))
 DAI_CONFIG(HDA, HDMI2_INDEX, 5, iDisp3,
 	HDA_CONFIG(HDA_CONFIG_DATA(HDA, HDMI2_INDEX, 48000, 2)))
-
-# dmic16k (ID: 6)
-DAI_CONFIG(DMIC, 1, 6, dmic16k,
-           DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
-                DMIC_WORD_LENGTH(DMIC01_FMT), 400, DMIC, 1,
-                PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
 
 ## remove warnings with SST hard-coded routes
 
