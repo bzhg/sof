@@ -60,7 +60,7 @@ static void notify_host(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "notify_host()");
+	comp_dbg(dev, "notify_host()");
 
 	ipc_msg_send(cd->msg, &cd->event, true);
 }
@@ -69,7 +69,7 @@ static void notify_kpb(const struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "notify_kpb()");
+	comp_dbg(dev, "notify_kpb()");
 
 	cd->client_data.r_ptr = NULL;
 	cd->client_data.sink = NULL;
@@ -129,7 +129,7 @@ static struct comp_dev *ghd_create(const struct comp_driver *drv,
 	}
 
 	dev->state = COMP_STATE_READY;
-	comp_info(dev, "ghd_create(): Ready");
+	comp_dbg(dev, "ghd_create(): Ready");
 	return dev;
 
 fail:
@@ -147,7 +147,7 @@ static void ghd_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "ghd_free()");
+	comp_dbg(dev, "ghd_free()");
 
 	comp_data_blob_handler_free(cd->model_handler);
 	ipc_msg_free(cd->msg);
@@ -232,8 +232,8 @@ static int ghd_ctrl_set_bin_data(struct comp_dev *dev,
 	switch (cdata->data->type) {
 	case GOOGLE_HOTWORD_DETECT_MODEL:
 		ret = comp_data_blob_set_cmd(cd->model_handler, cdata);
-		comp_info(dev, "ghd_ctrl_set_bin_data(): comp_data_blob_set_cmd=%d",
-			  ret);
+		comp_dbg(dev, "ghd_ctrl_set_bin_data(): comp_data_blob_set_cmd=%d",
+			 ret);
 		return ret;
 	default:
 		comp_err(dev, "ghd_ctrl_set_bin_data(): Unknown cdata->data->type %d",
@@ -267,8 +267,8 @@ static int ghd_ctrl_get_bin_data(struct comp_dev *dev,
 		ret = comp_data_blob_get_cmd(cd->model_handler,
 					     cdata,
 					     max_data_size);
-		comp_info(dev, "ghd_ctrl_get_bin_data(): comp_data_blob_get_cmd=%d, size=%d",
-			  ret, max_data_size);
+		comp_dbg(dev, "ghd_ctrl_get_bin_data(): comp_data_blob_get_cmd=%d, size=%d",
+			 ret, max_data_size);
 		return ret;
 	default:
 		comp_err(dev, "ghd_ctrl_get_bin_data(): Unknown cdata->data->type %d",
@@ -296,6 +296,8 @@ static int ghd_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
+	comp_dbg(dev, "ghd_cmd(): %d", cmd);
+
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
 		return ghd_ctrl_set_data(dev, cdata);
@@ -311,7 +313,7 @@ static int ghd_trigger(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "ghd_trigger(): %d", cmd);
+	comp_dbg(dev, "ghd_trigger(): %d", cmd);
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
 		cd->detected = 0;
@@ -334,7 +336,11 @@ static void ghd_detect(struct comp_dev *dev,
 	if (cd->detected)
 		return;
 
-	/* Assuming 1 channel, verified in ghd_params */
+	/* Assuming 1 channel, verified in ghd_params.
+	 *
+	 * TODO Make the logic multi channel safe when new hotword library can
+	 * utilize multi channel data for detection.
+	 */
 	sample_bytes = audio_stream_sample_bytes(stream);
 	comp_dbg(dev, "GoogleHotwordDspProcess(0x%x, %u)",
 		 (uint32_t)samples, bytes / sample_bytes);
@@ -361,7 +367,7 @@ static int ghd_copy(struct comp_dev *dev)
 
 	/* Check for new model */
 	if (comp_is_new_data_blob_available(cd->model_handler)) {
-		comp_info(dev, "ghd_copy(): Switch to new model");
+		comp_dbg(dev, "ghd_copy(): Switch to new model");
 		ret = ghd_setup_model(dev);
 		if (ret)
 			return ret;
@@ -406,7 +412,7 @@ static int ghd_reset(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	comp_info(dev, "ghd_reset()");
+	comp_dbg(dev, "ghd_reset()");
 
 	cd->detected = 0;
 	GoogleHotwordDspReset();
@@ -418,7 +424,7 @@ static int ghd_prepare(struct comp_dev *dev)
 {
 	int ret;
 
-	comp_info(dev, "ghd_prepare()");
+	comp_dbg(dev, "ghd_prepare()");
 
 	ret = ghd_setup_model(dev);
 	if (ret)
