@@ -45,7 +45,7 @@ C_CONTROLBYTES(SELECTOR, PIPELINE_ID,
 # Empty model
 # sof_abi_hdr.size = 0
 # sof_abi_hdr.type = 0 (GOOGLE_HOTWORD_DETECT_MODEL)
-CONTROLBYTES_PRIV(MODEL_priv,
+CONTROLBYTES_PRIV(GOOGLE_HOTWORD_DETECT_MODEL_priv,
 `       bytes "0x53,0x4f,0x46,0x00,0x00,0x00,0x00,0x00,'
 `       0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x03,'
 `       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
@@ -59,7 +59,7 @@ C_CONTROLBYTES(Hotword Model, PIPELINE_ID,
         , , ,
         CONTROLBYTES_MAX(, 300000),
         ,
-        MODEL_priv)
+        GOOGLE_HOTWORD_DETECT_MODEL_priv)
 
 #
 # Components and Buffers
