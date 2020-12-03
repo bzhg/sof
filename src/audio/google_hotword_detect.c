@@ -54,6 +54,7 @@ struct comp_data {
 	struct ipc_msg *msg;
 
 	int detected;
+	size_t history_bytes;
 };
 
 static void notify_host(const struct comp_dev *dev)
@@ -215,6 +216,7 @@ static int ghd_setup_model(struct comp_dev *dev)
 
 	ret = GoogleHotwordDspInit(model);
 	cd->detected = 0;
+	cd->history_bytes = 0;
 	if (ret != 1) {
 		comp_err(dev, "GoogleHotwordDSPInit failed: %d", ret);
 		return -EINVAL;
@@ -317,6 +319,7 @@ static int ghd_trigger(struct comp_dev *dev, int cmd)
 
 	if (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE) {
 		cd->detected = 0;
+		cd->history_bytes = 0;
 		GoogleHotwordDspReset();
 	}
 
@@ -342,15 +345,30 @@ static void ghd_detect(struct comp_dev *dev,
 	 * utilize multi channel data for detection.
 	 */
 	sample_bytes = audio_stream_sample_bytes(stream);
+
+	if (cd->history_bytes <
+	    KPB_MAX_BUFF_TIME * KPB_SAMPLES_PER_MS * sample_bytes) {
+		cd->history_bytes += bytes;
+	}
+
 	comp_dbg(dev, "GoogleHotwordDspProcess(0x%x, %u)",
 		 (uint32_t)samples, bytes / sample_bytes);
 	ret = GoogleHotwordDspProcess(samples, bytes / sample_bytes,
 				      &preamble_length_ms);
 	if (ret == 1) {
-		comp_info(dev, "Hotword detected %dms", preamble_length_ms);
 		cd->detected = 1;
+
+		/* The current version of GoogleHotwordDspProcess always
+		 * reports 2000ms preamble. Clamp this by the actual history
+		 * length so KPB doesn't complain not enough data to drain when
+		 * the hotword is detected right after pcm device open.
+		 */
+		cd->client_data.drain_req = MIN((size_t)preamble_length_ms,
+			cd->history_bytes / sample_bytes / KPB_SAMPLES_PER_MS);
+
 		/* drain_req is actually in ms. See kpb_init_draining. */
-		cd->client_data.drain_req = preamble_length_ms;
+		comp_info(dev, "Hotword detected %dms",
+			  cd->client_data.drain_req);
 		notify_host(dev);
 		notify_kpb(dev);
 	}
@@ -415,6 +433,7 @@ static int ghd_reset(struct comp_dev *dev)
 	comp_dbg(dev, "ghd_reset()");
 
 	cd->detected = 0;
+	cd->history_bytes = 0;
 	GoogleHotwordDspReset();
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
